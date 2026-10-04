@@ -1,79 +1,562 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Audio Message Encoder</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <div class="app-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Audio Messaging Demo</p>
-          <h1>Send text as sound</h1>
-        </div>
-      </header>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Audio Wave - Message Encoder</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root {
+            --primary: #00d4ff;
+            --primary-dark: #0099cc;
+            --secondary: #ff00ff;
+            --accent: #00ff88;
+            --dark-bg: #0a0e27;
+            --darker-bg: #050810;
+            --card-bg: rgba(15, 20, 50, 0.8);
+            --border: rgba(0, 212, 255, 0.3);
+            --text: #e0e6ff;
+            --text-muted: #8b92b9;
+            --success: #00ff88;
+            --error: #ff1744;
+        }
 
-      <main class="panel-grid">
-        <section class="panel">
-          <div class="panel-header">
-            <h2>Encode</h2>
-            <span class="badge">Browser generated</span>
-          </div>
+        * { margin: 0; padding: 0; }
+        html, body { width: 100%; min-height: 100%; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, var(--dark-bg) 0%, var(--darker-bg) 100%); color: var(--text); overflow-x: hidden; }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: -20% -20%;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: gridMove 18s linear infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+        @keyframes gridMove { 0% { transform: translate(0, 0);} 100% { transform: translate(30px, 30px);} }
 
-          <label for="messageInput">Message</label>
-          <textarea id="messageInput" rows="8" placeholder="Type your message here...">Hello from audio</textarea>
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 28px 18px 40px;
+        }
 
-          <div class="controls-row">
-            <div class="field">
-              <label for="freqZero">Bit 0 frequency</label>
-              <input id="freqZero" type="number" min="200" max="5000" value="800" />
-            </div>
-            <div class="field">
-              <label for="freqOne">Bit 1 frequency</label>
-              <input id="freqOne" type="number" min="200" max="5000" value="1400" />
-            </div>
-          </div>
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: slideDown 0.8s ease-out;
+        }
+        .logo { font-size: 3rem; margin-bottom: 8px; animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { transform: scale(1);} 50% { transform: scale(1.12);} }
+        h1 {
+            font-size: clamp(2.2rem, 5vw, 3.2rem);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .tagline { color: var(--text-muted); font-size: 1rem; }
 
-          <div class="controls-row">
-            <div class="field">
-              <label for="bitDuration">Bit duration (s)</label>
-              <input id="bitDuration" type="number" min="0.03" max="1" step="0.01" value="0.12" />
-            </div>
-            <div class="field">
-              <label for="sampleRate">Sample rate</label>
-              <input id="sampleRate" type="number" min="8000" max="48000" step="1000" value="22050" />
-            </div>
-          </div>
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            animation: slideUp 0.8s ease-out .18s both;
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-18px);} to { opacity: 1; transform: translateY(0);} }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(24px);} to { opacity: 1; transform: translateY(0);} }
 
-          <div class="button-row">
-            <button id="generateBtn" class="primary">Generate audio</button>
-            <a id="downloadBtn" class="secondary hidden" download="message.wav">Download WAV</a>
-          </div>
+        .card {
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            border-radius: 22px;
+            padding: 26px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 36px rgba(0,212,255,0.10);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 16px 45px rgba(0,212,255,0.22);
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: -20% auto auto -20%;
+            width: 120%;
+            height: 110%;
+            background: linear-gradient(90deg, transparent, rgba(0,212,255,0.15), transparent);
+            transform: translateX(-100%);
+            animation: shimmer 4s ease-in-out infinite;
+        }
+        @keyframes shimmer { 0% { transform: translateX(-100%);} 80%,100% { transform: translateX(100%);} }
 
-          <audio id="audioPlayer" controls class="hidden"></audio>
-        </section>
+        .card-title {
+            font-size: 1.7rem;
+            margin-bottom: 20px;
+            color: var(--primary);
+            letter-spacing: 1px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card-title::before {
+            content: '';
+            width: 5px;
+            height: 20px;
+            background: linear-gradient(180deg, var(--primary), var(--secondary));
+            border-radius: 3px;
+        }
 
-        <section class="panel">
-          <div class="panel-header">
-            <h2>Decode</h2>
-            <span class="badge">Upload WAV</span>
-          </div>
+        .form-group { margin-bottom: 18px; }
+        label {
+            display: block;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            color: var(--primary);
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        textarea, input {
+            width: 100%;
+            border: 2px solid rgba(0,212,255,0.2);
+            background: rgba(5,8,16,0.5);
+            border-radius: 12px;
+            color: var(--text);
+            padding: 12px 14px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        textarea:focus, input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(0,212,255,0.15);
+        }
+        textarea {
+            min-height: 130px;
+            resize: vertical;
+        }
 
-          <label for="audioUpload">Choose audio file</label>
-          <input id="audioUpload" type="file" accept=".wav,audio/wav" />
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
 
-          <div class="decode-status" id="decodeStatus">No file selected.</div>
+        .button-group {
+            display: flex;
+            gap: 14px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
 
-          <label for="decodedText">Decoded message</label>
-          <textarea id="decodedText" rows="8" readonly placeholder="Decoded text will appear here..."></textarea>
+        button, .btn {
+            appearance: none;
+            border: none;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            cursor: pointer;
+            padding: 14px 20px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease;
+            position: relative;
+            overflow: hidden;
+            min-width: 150px;
+        }
+        button::before, .btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(120deg, transparent, rgba(255,255,255,0.25), transparent); transform: translateX(-100%); transition: transform 0.35s ease; }
+        button:hover::before, .btn:hover::before { transform: translateX(100%); }
+        button:hover, .btn:hover { transform: translateY(-2px); }
 
-          <button id="decodeBtn" class="primary">Decode uploaded audio</button>
-        </section>
-      </main>
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #07111d;
+            box-shadow: 0 8px 22px rgba(0,212,255,0.25);
+        }
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--secondary);
+            color: var(--secondary);
+        }
+        .hidden { display:none !important; }
+
+        .status {
+            margin: 16px 0;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 2px solid;
+            font-size: 0.92rem;
+            font-weight: 700;
+        }
+        .status.info { border-color: var(--primary); background: rgba(0,212,255,0.12); color: var(--primary); }
+        .status.success { border-color: var(--success); background: rgba(0,255,136,0.12); color: var(--success); }
+        .status.error { border-color: var(--error); background: rgba(255,23,68,0.10); color: var(--error); }
+
+        .waveform {
+            height: 88px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: rgba(0,0,0,0.18);
+            border: 2px solid rgba(0,212,255,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 18px;
+        }
+        .bar {
+            width: 6px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, var(--primary), var(--secondary));
+            animation: wave 0.8s ease-in-out infinite;
+        }
+        @keyframes wave {
+            0%,100% { height: 22%; }
+            50% { height: 100%; }
+        }
+        .bar:nth-child(1){ animation-delay:0s; }
+        .bar:nth-child(2){ animation-delay:.08s; }
+        .bar:nth-child(3){ animation-delay:.16s; }
+        .bar:nth-child(4){ animation-delay:.24s; }
+        .bar:nth-child(5){ animation-delay:.32s; }
+        .bar:nth-child(6){ animation-delay:.24s; }
+        .bar:nth-child(7){ animation-delay:.16s; }
+        .bar:nth-child(8){ animation-delay:.08s; }
+
+        .file-upload {
+            position: relative;
+            cursor: pointer;
+        }
+        .file-upload input { display: none; }
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+            border: 2px dashed var(--primary);
+            border-radius: 12px;
+            background: rgba(0,212,255,0.06);
+            color: var(--primary);
+            cursor: pointer;
+            text-align: center;
+            font-weight: 700;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+        .file-upload-label:hover { background: rgba(0,212,255,0.12); border-color: var(--secondary); }
+
+        audio {
+            width: 100%;
+            margin-top: 18px;
+            border-radius: 12px;
+        }
+
+        .loader {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(5,8,16,0.7);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg);} }
+
+        @media (max-width: 820px) {
+            .main-grid { grid-template-columns: 1fr; }
+            .controls-grid { grid-template-columns: 1fr; }
+            button, .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">🎵</div>
+            <h1>Audio Wave</h1>
+            <p class="tagline">Send secret messages through sound</p>
+        </header>
+
+        <main class="main-grid">
+            <section class="card">
+                <h2 class="card-title">Encode</h2>
+
+                <div class="form-group">
+                    <label for="messageInput">Message</label>
+                    <textarea id="messageInput" placeholder="Type your message...">Hello from Audio Wave</textarea>
+                </div>
+
+                <div class="controls-grid">
+                    <div>
+                        <label for="freqZero">Bit 0 frequency</label>
+                        <input id="freqZero" type="number" value="600" min="100" max="2000" />
+                    </div>
+                    <div>
+                        <label for="freqOne">Bit 1 frequency</label>
+                        <input id="freqOne" type="number" value="1000" min="100" max="2000" />
+                    </div>
+                </div>
+
+                <div class="waveform">
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                </div>
+
+                <div class="button-group">
+                    <button id="generateBtn" class="btn-primary">Generate</button>
+                    <a id="downloadBtn" class="btn btn-secondary hidden" download="message.wav">Download</a>
+                </div>
+
+                <audio id="audioPlayer" controls class="hidden"></audio>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title">Decode</h2>
+
+                <div class="form-group">
+                    <label>Audio File</label>
+                    <div class="file-upload">
+                        <input id="audioUpload" type="file" accept=".wav,audio/wav" />
+                        <label class="file-upload-label" for="audioUpload">Click to upload WAV</label>
+                    </div>
+                </div>
+
+                <div id="decodeStatus" class="status info hidden">Ready to decode</div>
+
+                <div class="waveform">
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="decodedText">Decoded Message</label>
+                    <textarea id="decodedText" readonly placeholder="Decoded message appears here..."></textarea>
+                </div>
+
+                <button id="decodeBtn" class="btn-primary">Decode</button>
+            </section>
+        </main>
     </div>
 
-    <script src="script.js"></script>
-  </body>
+    <script>
+        const MESSAGE_MAGIC = [0x41, 0x55, 0x44, 0x31];
+        const PREAMBLE = [1,0,1,0,1,0,1,0];
+
+        const generateBtn = document.getElementById('generateBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const messageInput = document.getElementById('messageInput');
+        const freqZeroInput = document.getElementById('freqZero');
+        const freqOneInput = document.getElementById('freqOne');
+        const audioUpload = document.getElementById('audioUpload');
+        const decodeBtn = document.getElementById('decodeBtn');
+        const decodedText = document.getElementById('decodedText');
+        const decodeStatus = document.getElementById('decodeStatus');
+
+        function textToBytes(text) { return new TextEncoder().encode(text); }
+
+        function bytesToBits(bytes) {
+            const bits = [];
+            for (const byte of bytes) {
+                for (let i = 7; i >= 0; i--) bits.push((byte >> i) & 1);
+            }
+            return bits;
+        }
+
+        function bitsToBytes(bits) {
+            const bytes = [];
+            for (let i = 0; i < bits.length; i += 8) {
+                const byteBits = bits.slice(i, i + 8);
+                if (byteBits.length < 8) break;
+                let value = 0;
+                for (let j = 0; j < 8; j++) value = (value << 1) | byteBits[j];
+                bytes.push(value);
+            }
+            return new Uint8Array(bytes);
+        }
+
+        function createStringView(view, offset, text) {
+            for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i));
+        }
+
+        function createWavBlob(samples, sampleRate) {
+            const buffer = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buffer);
+            createStringView(view, 0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * 2, true);
+            createStringView(view, 8, 'WAVE');
+            createStringView(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            createStringView(view, 36, 'data');
+            view.setUint32(40, samples.length * 2, true);
+            let offset = 44;
+            for (let i = 0; i < samples.length; i++) {
+                const sample = Math.max(-1, Math.min(1, samples[i]));
+                view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+                offset += 2;
+            }
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        function encodeMessageToBits(messageText) {
+            const payload = textToBytes(messageText);
+            const lengthBytes = new Uint8Array(4);
+            const len = payload.length;
+            lengthBytes[0] = (len >> 24) & 0xff;
+            lengthBytes[1] = (len >> 16) & 0xff;
+            lengthBytes[2] = (len >> 8) & 0xff;
+            lengthBytes[3] = len & 0xff;
+            return [...PREAMBLE, ...bytesToBits(new Uint8Array(MESSAGE_MAGIC)), ...bytesToBits(lengthBytes), ...bytesToBits(payload)];
+        }
+
+        function buildToneSegment(frequency, sampleRate, durationSeconds) {
+            const totalSamples = Math.floor(sampleRate * durationSeconds);
+            const samples = [];
+            for (let i = 0; i < totalSamples; i++) {
+                const t = i / sampleRate;
+                const envelope = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / totalSamples);
+                const sample = Math.sin(2 * Math.PI * frequency * t) * envelope * 0.7;
+                samples.push(sample);
+            }
+            return samples;
+        }
+
+        function showStatus(message, type) {
+            decodeStatus.textContent = message;
+            decodeStatus.className = `status ${type}`;
+            decodeStatus.classList.remove('hidden');
+            setTimeout(() => decodeStatus.classList.add('hidden'), 3000);
+        }
+
+        generateBtn.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (!message) {
+                showStatus('Please type a message first!', 'error');
+                return;
+            }
+            generateBtn.innerHTML = '<span class="loader"></span>Generating';
+            generateBtn.disabled = true;
+            setTimeout(() => {
+                const freqZero = Number(freqZeroInput.value) || 600;
+                const freqOne = Number(freqOneInput.value) || 1000;
+                const sampleRate = 16000;
+                const bitDuration = 0.05;
+                const bits = encodeMessageToBits(message);
+                const output = [];
+                for (const bit of bits) {
+                    const frequency = bit === 1 ? freqOne : freqZero;
+                    output.push(...buildToneSegment(frequency, sampleRate, bitDuration));
+                }
+                const blob = createWavBlob(output, sampleRate);
+                const url = URL.createObjectURL(blob);
+                audioPlayer.src = url;
+                audioPlayer.classList.remove('hidden');
+                downloadBtn.href = url;
+                downloadBtn.classList.remove('hidden');
+                generateBtn.innerHTML = 'Generate';
+                generateBtn.disabled = false;
+                showStatus('Audio generated successfully!', 'success');
+            }, 250);
+        });
+
+        decodeBtn.addEventListener('click', () => {
+            const file = audioUpload.files[0];
+            if (!file) {
+                showStatus('Upload a WAV file first!', 'error');
+                return;
+            }
+            decodeBtn.innerHTML = '<span class="loader"></span>Decoding';
+            decodeBtn.disabled = true;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const wav = readWavFile(reader.result)
+                    const decoded = decodeAudioSamples(wav.samples, wav.sampleRate);
+                    decodedText.value = decoded.text;
+                    showStatus('Decoded successfully!', 'success');
+                } catch (error) {
+                    showStatus('Decode failed: ' + error.message, 'error');
+                }
+                decodeBtn.innerHTML = 'Decode';
+                decodeBtn.disabled = false;
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function readWavFile(arrayBuffer) {
+            const view = new DataView(arrayBuffer);
+            let sampleRate = 16000;
+            let dataOffset = 44;
+            let dataLength = 0;
+            let offset = 12;
+            while (offset + 8 <= view.byteLength) {
+                const chunkId = String.fromCharCode(...new Uint8Array(arrayBuffer.slice(offset, offset + 4)));
+                const chunkSize = view.getUint32(offset + 4, true);
+                if (chunkId === 'fmt ') sampleRate = view.getUint32(offset + 12, true);
+                if (chunkId === 'data') {
+                    dataOffset = offset + 8;
+                    dataLength = chunkSize;
+                }
+                offset += 8 + chunkSize + (chunkSize % 2);
+            }
+            const dataView = new DataView(arrayBuffer, dataOffset, dataLength);
+            const samples = new Float32Array(dataLength / 2);
+            for (let i = 0; i < samples.length; i++) samples[i] = dataView.getInt16(i * 2, true) / 32768;
+            return { sampleRate, samples };
+        }
+
+        function measureToneEnergy(segment, frequency, sampleRate) {
+            let energy = 0;
+            for (let i = 0; i < segment.length; i++) {
+                const t = i / sampleRate;
+                energy += segment[i] * Math.cos(2 * Math.PI * frequency * t);
+            }
+            return Math.abs(energy);
+        }
+
+        function decodeAudioSamples(samples, sampleRate) {
+            const bitDuration = 0.05;
+            const segmentLength = Math.floor(sampleRate * bitDuration);
+            const freqZero = Number(freqZeroInput.value) || 600;
+            const freqOne = Number(freqOneInput.value) || 1000;
+            const allBits = [];
+            for (let i = 0; i < samples.length; i += segmentLength) {
+                const segment = samples.slice(i, i + segmentLength);
+                const zeroEnergy = measureToneEnergy(segment, freqZero, sampleRate);
+                const oneEnergy = measureToneEnergy(segment, freqOne, sampleRate);
+                allBits.push(oneEnergy > zeroEnergy ? 1 : 0);
+            }
+
+            const magicBits = allBits.slice(PREAMBLE.length, PREAMBLE.length + 32);
+            const magicText = Array.from(bitsToBytes(magicBits)).map(ch => String.fromCharCode(ch)).join('');
+            if (magicText !== 'AUD1') throw new Error('Invalid audio signature');
+
+            const lengthBits = allBits.slice(PREAMBLE.length + 32, PREAMBLE.length + 64);
+            const lengthBytes = bitsToBytes(lengthBits);
+            const messageLength = ((lengthBytes[0] << 24) | (lengthBytes[1] << 16) | (lengthBytes[2] << 8) | lengthBytes[3]) >>> 0;
+            const payloadBits = allBits.slice(PREAMBLE.length + 64, PREAMBLE.length + 64 + (messageLength * 8));
+            const data = bitsToBytes(payloadBits).slice(0, messageLength);
+            return { text: new TextDecoder().decode(data) };
+        }
+    </script>
+</body>
 </html>
